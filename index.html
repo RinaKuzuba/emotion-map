@@ -2,11 +2,42 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>ラッセル感情円環（VA配置）</title>
+<title>ラッセル感情円環（VA配置）- 精神疾患症状マッピング</title>
 
 <style>
     body { font-family: Arial; background:#eef1ff; padding:20px; }
     .container { max-width:820px; margin:auto; background:#fff; padding:25px; border-radius:16px; }
+    
+    /* 疾患選択ボタン */
+    .disease-selector {
+        text-align: center;
+        margin: 20px 0;
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+    
+    .disease-btn {
+        padding: 10px 20px;
+        border: 2px solid #667eea;
+        background: white;
+        color: #667eea;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: all 0.3s;
+    }
+    
+    .disease-btn:hover {
+        background: #f0f0ff;
+    }
+    
+    .disease-btn.active {
+        background: #667eea;
+        color: white;
+    }
+    
     #emotion-map {
         position:relative;
         width:600px;
@@ -32,16 +63,98 @@
     .bg-emotion{
         position:absolute;
         font-size:11px;
-        color:#555;
+        color:#bbb;
         transform:translate(-50%,-50%);
         white-space:nowrap;
+        opacity: 0.7;
+    }
+    
+    /* 症状ピン */
+    .symptom-pin {
+        position: absolute;
+        transform: translate(-50%, -100%);
+        cursor: pointer;
+        animation: dropIn 0.5s ease-out;
+        z-index: 100;
+    }
+    
+    .pin-head {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        margin: 0 auto 5px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        border: 3px solid white;
+        position: relative;
+    }
+    
+    .pin-head::after {
+        content: '';
+        position: absolute;
+        top: 3px;
+        left: 3px;
+        width: 6px;
+        height: 6px;
+        background: rgba(255,255,255,0.7);
+        border-radius: 50%;
+    }
+    
+    .pin-stick {
+        width: 2px;
+        height: 20px;
+        background: #333;
+        margin: 0 auto;
+    }
+    
+    .symptom-label {
+        position: absolute;
+        bottom: -28px;
+        left: 50%;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        font-size: 12px;
+        font-weight: bold;
+        background: white;
+        padding: 3px 8px;
+        border-radius: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    }
+    
+    @keyframes dropIn {
+        from {
+            transform: translate(-50%, -150%) scale(0.5);
+            opacity: 0;
+        }
+        to {
+            transform: translate(-50%, -100%) scale(1);
+            opacity: 1;
+        }
+    }
+    
+    .info-box {
+        margin-top: 20px;
+        padding: 15px;
+        background: #f8f9fa;
+        border-radius: 8px;
+        text-align: center;
+        font-size: 14px;
+        color: #666;
     }
 </style>
 </head>
 
 <body>
 <div class="container">
-<h2>ラッセル感情円環 − Valence × Arousal 2D配置</h2>
+<h2>ラッセル感情円環 − 精神疾患症状マッピング</h2>
+
+<div class="disease-selector">
+    <button class="disease-btn" onclick="showSymptoms('clear')">クリア</button>
+    <button class="disease-btn" onclick="showSymptoms('schizo-positive')">統合失調症（陽性症状）</button>
+    <button class="disease-btn" onclick="showSymptoms('schizo-negative')">統合失調症（陰性症状）</button>
+    <button class="disease-btn" onclick="showSymptoms('depression')">うつ病</button>
+    <button class="disease-btn" onclick="showSymptoms('bipolar-manic')">双極性障害（躁状態）</button>
+    <button class="disease-btn" onclick="showSymptoms('bipolar-depressive')">双極性障害（うつ状態）</button>
+</div>
 
 <div id="emotion-map">
     <div class="axis-h"></div>
@@ -52,6 +165,10 @@
     <div class="axis-label label-left">不快（Unpleasant）</div>
     <div class="axis-label label-right">快（Pleasant）</div>
 </div>
+
+<div class="info-box" id="info-box">
+    疾患を選択すると、主要な症状が感情円環上にマッピングされます
+</div>
 </div>
 
 <script>
@@ -59,9 +176,7 @@ const centerX = 300;
 const centerY = 300;
 const radius = 250;
 
-// ▼ 各感情に Valence / Arousal を割り当て
-//   valence: −100=強い不快 〜 +100=強い快
-//   arousal: −100=低覚醒   〜 +100=高覚醒
+// ▼ 背景の感情配置（薄く表示）
 const emotionsVA = [
  {ja:"覚醒した", val:10, aro:90},
  {ja:"驚いた", val:5, aro:85},
@@ -95,57 +210,147 @@ const emotionsVA = [
  {ja:"疲労した", val:-20, aro:-50},
  {ja:"退屈な", val:-40, aro:-30},
  {ja:"静かな", val:35, aro:-20},
- {ja:"眠い(再)", val:5, aro:-75},
- {ja:"まどろんだ", val:20, aro:-65},
- {ja:"ぼんやりした", val:-5, aro:-45},
- {ja:"退屈な(再)", val:-30, aro:-35},
- {ja:"悲しい(再)", val:-65, aro:-25},
- {ja:"消沈した", val:-75, aro:-20},
- {ja:"不幸せな", val:-80, aro:-15},
- {ja:"みじめな", val:-85, aro:-5},
- {ja:"苦悩した", val:-80, aro:10},
- {ja:"イライラした", val:-60, aro:45},
- {ja:"欲求不満の", val:-70, aro:35},
- {ja:"怒った(再)", val:-75, aro:60},
- {ja:"恐れている", val:-65, aro:65},
- {ja:"驚愕した", val:-30, aro:85},
- {ja:"緊張した", val:-25, aro:70},
- {ja:"刺激された", val:20, aro:75},
- {ja:"熱狂的な", val:75, aro:65},
- {ja:"意気揚々とした", val:85, aro:60},
- {ja:"いらだった", val:-15, aro:55},
- {ja:"神経質な", val:-35, aro:50},
- {ja:"怖い(再)", val:-50, aro:60},
- {ja:"恐れおののいた", val:-45, aro:80},
- {ja:"仰天した", val:-5, aro:90},
- {ja:"熱心な", val:70, aro:50},
- {ja:"活気ある", val:60, aro:65},
- {ja:"賑やかな", val:55, aro:70},
- {ja:"目が冴えた", val:45, aro:80},
- {ja:"警戒した", val:20, aro:65},
- {ja:"集中した", val:35, aro:40},
- {ja:"決然とした", val:50, aro:35},
- {ja:"注意深い", val:25, aro:30},
  {ja:"受動的な", val:0, aro:-20}
 ];
 
-// ▼ 描画
-function renderVA(){
-    const map=document.getElementById("emotion-map");
-    emotionsVA.forEach(e=>{
-        const px = centerX + (e.val/100)*radius;
-        const py = centerY - (e.aro/100)*radius;  // ← ここを修正
+// ▼ 疾患別症状定義
+const diseaseSymptoms = {
+    'schizo-positive': {
+        name: '統合失調症（陽性症状）',
+        color: '#FF6B6B',
+        symptoms: [
+            {name: '幻覚', val: -40, aro: 75},
+            {name: '妄想', val: -60, aro: 70},
+            {name: '興奮', val: -30, aro: 85},
+            {name: '思考障害', val: -50, aro: 60},
+            {name: '緊張', val: -45, aro: 65}
+        ]
+    },
+    'schizo-negative': {
+        name: '統合失調症（陰性症状）',
+        color: '#868E96',
+        symptoms: [
+            {name: '感情鈍麻', val: -10, aro: -60},
+            {name: '意欲低下', val: -30, aro: -70},
+            {name: '無為', val: -20, aro: -75},
+            {name: '社会的引きこもり', val: -40, aro: -50},
+            {name: '思考貧困', val: -25, aro: -65}
+        ]
+    },
+    'depression': {
+        name: 'うつ病',
+        color: '#4C6EF5',
+        symptoms: [
+            {name: '抑うつ気分', val: -75, aro: -40},
+            {name: '興味喪失', val: -60, aro: -60},
+            {name: '疲労感', val: -30, aro: -70},
+            {name: '無価値感', val: -80, aro: -30},
+            {name: '希死念慮', val: -85, aro: -20},
+            {name: '不安', val: -55, aro: 40},
+            {name: '焦燥感', val: -60, aro: 45}
+        ]
+    },
+    'bipolar-manic': {
+        name: '双極性障害（躁状態）',
+        color: '#FFD43B',
+        symptoms: [
+            {name: '高揚感', val: 70, aro: 80},
+            {name: '多弁', val: 40, aro: 75},
+            {name: '観念奔逸', val: 30, aro: 85},
+            {name: '誇大性', val: 60, aro: 70},
+            {name: '睡眠欲求減少', val: 20, aro: 90},
+            {name: '注意散漫', val: 10, aro: 80}
+        ]
+    },
+    'bipolar-depressive': {
+        name: '双極性障害（うつ状態）',
+        color: '#845EC2',
+        symptoms: [
+            {name: '抑うつ気分', val: -70, aro: -35},
+            {name: '精神運動制止', val: -50, aro: -65},
+            {name: '罪責感', val: -75, aro: -25},
+            {name: '集中困難', val: -40, aro: -45},
+            {name: '倦怠感', val: -35, aro: -70},
+            {name: '不安', val: -60, aro: 35}
+        ]
+    }
+};
 
-        const d=document.createElement("div");
-        d.className="bg-emotion";
-        d.style.left=`${px}px`;
-        d.style.top=`${py}px`;
-        d.textContent=e.ja;
+// ▼ 背景感情を描画
+function renderBackground(){
+    const map = document.getElementById("emotion-map");
+    emotionsVA.forEach(e => {
+        const px = centerX + (e.val/100)*radius;
+        const py = centerY - (e.aro/100)*radius;
+
+        const d = document.createElement("div");
+        d.className = "bg-emotion";
+        d.style.left = `${px}px`;
+        d.style.top = `${py}px`;
+        d.textContent = e.ja;
         map.appendChild(d);
     });
 }
 
-renderVA();
+// ▼ 症状ピンを追加
+function addSymptomPin(symptom, color, delay = 0) {
+    setTimeout(() => {
+        const map = document.getElementById("emotion-map");
+        const px = centerX + (symptom.val/100)*radius;
+        const py = centerY - (symptom.aro/100)*radius;
+        
+        const pin = document.createElement("div");
+        pin.className = "symptom-pin";
+        pin.style.left = `${px}px`;
+        pin.style.top = `${py}px`;
+        
+        pin.innerHTML = `
+            <div class="pin-head" style="background: ${color};"></div>
+            <div class="pin-stick"></div>
+            <div class="symptom-label" style="color: ${color};">${symptom.name}</div>
+        `;
+        
+        map.appendChild(pin);
+    }, delay);
+}
+
+// ▼ ピンをクリア
+function clearPins() {
+    const pins = document.querySelectorAll('.symptom-pin');
+    pins.forEach(pin => pin.remove());
+}
+
+// ▼ 症状を表示
+function showSymptoms(diseaseType) {
+    // ボタンのアクティブ状態を更新
+    document.querySelectorAll('.disease-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    // ピンをクリア
+    clearPins();
+    
+    // 情報表示を更新
+    const infoBox = document.getElementById('info-box');
+    
+    if (diseaseType === 'clear') {
+        infoBox.textContent = '疾患を選択すると、主要な症状が感情円環上にマッピングされます';
+        return;
+    }
+    
+    // 選択された疾患の症状を表示
+    const disease = diseaseSymptoms[diseaseType];
+    if (disease) {
+        infoBox.innerHTML = `<strong>${disease.name}</strong> の主要症状を表示中`;
+        disease.symptoms.forEach((symptom, index) => {
+            addSymptomPin(symptom, disease.color, index * 150);
+        });
+    }
+}
+
+// 初期描画
+renderBackground();
 </script>
 </body>
 </html>
