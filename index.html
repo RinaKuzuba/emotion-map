@@ -25,7 +25,24 @@
         h1 {
             text-align: center;
             color: #333;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
+        }
+
+        .model-title {
+            text-align: center;
+            margin: 0 0 10px;
+            font-size: 18px;
+            color: #555;
+        }
+
+        .model-switch {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .model-switch span {
+            font-weight: bold;
+            margin-right: 10px;
         }
         
         #emotion-map {
@@ -73,32 +90,48 @@
             top: 15px;
             left: 50%;
             transform: translateX(-50%);
-            color: #2ecc71;
-            border: 2px solid #2ecc71;
         }
         
         .label-bottom {
             bottom: 15px;
             left: 50%;
             transform: translateX(-50%);
-            color: #e74c3c;
-            border: 2px solid #e74c3c;
         }
         
         .label-left {
             left: 15px;
             top: 50%;
             transform: translateY(-50%);
-            color: #3498db;
-            border: 2px solid #3498db;
         }
         
         .label-right {
             right: 15px;
             top: 50%;
             transform: translateY(-50%);
+        }
+
+        /* ラッセル軸の色 */
+        #russell-guides .label-top {
+            color: #2ecc71;
+            border: 2px solid #2ecc71;
+        }
+        #russell-guides .label-bottom {
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+        }
+        #russell-guides .label-left {
+            color: #3498db;
+            border: 2px solid #3498db;
+        }
+        #russell-guides .label-right {
             color: #f39c12;
             border: 2px solid #f39c12;
+        }
+
+        /* プルチック軸の色（任意） */
+        #plutchik-guides .axis-label {
+            border: 2px solid #8e44ad;
+            color: #8e44ad;
         }
         
         /* 感情ピン */
@@ -162,6 +195,7 @@
             font-size: 12px;
             color: #aaa;
             font-style: italic;
+            white-space: nowrap;
         }
         
         @keyframes dropIn {
@@ -192,40 +226,81 @@
             border: none;
             padding: 10px 20px;
             border-radius: 5px;
-            font-size: 16px;
+            font-size: 14px;
             cursor: pointer;
             margin: 5px;
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
         }
         
         button:hover {
             transform: scale(1.05);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+        }
+
+        .model-button.active {
+            box-shadow: 0 0 0 2px #fff, 0 0 0 4px rgba(255,255,255,0.6);
+            opacity: 1;
+        }
+
+        .model-button {
+            opacity: 0.8;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>🧠 感情円環マップ - 2D可視化</h1>
+        <p class="model-title" id="model-title">モデル：ラッセルの感情円環モデル</p>
+
+        <div class="model-switch">
+            <span>モデル選択：</span>
+            <button class="model-button active" data-model="russell" onclick="setModel('russell')">ラッセル</button>
+            <button class="model-button" data-model="plutchik" onclick="setModel('plutchik')">プルチック</button>
+        </div>
         
         <div id="emotion-map">
-            <!-- 座標軸 -->
+            <!-- 座標軸（共通で表示） -->
             <div class="axis-h"></div>
             <div class="axis-v"></div>
             
-            <!-- 軸ラベル -->
-            <div class="axis-label label-top">快</div>
-            <div class="axis-label label-bottom">不快</div>
-            <div class="axis-label label-left">低覚醒</div>
-            <div class="axis-label label-right">高覚醒</div>
-            
-            <!-- 背景の感情位置（ガイド） -->
-            <div class="bg-emotion" style="left: 380px; top: 150px;">喜び</div>
-            <div class="bg-emotion" style="left: 450px; top: 200px;">興奮</div>
-            <div class="bg-emotion" style="left: 200px; top: 150px;">満足</div>
-            <div class="bg-emotion" style="left: 150px; top: 200px;">平穏</div>
-            <div class="bg-emotion" style="left: 150px; top: 400px;">倦怠</div>
-            <div class="bg-emotion" style="left: 450px; top: 380px;">怒り</div>
-            <div class="bg-emotion" style="left: 300px; top: 300px;">中立</div>
+            <!-- ラッセルモデルのガイド -->
+            <div id="russell-guides">
+                <!-- 軸ラベル -->
+                <div class="axis-label label-top">快（Pleasant）</div>
+                <div class="axis-label label-bottom">不快（Unpleasant）</div>
+                <div class="axis-label label-left">低覚醒（Low Arousal）</div>
+                <div class="axis-label label-right">高覚醒（High Arousal）</div>
+                
+                <!-- 背景の感情位置（ガイド） -->
+                <div class="bg-emotion" style="left: 390px; top: 140px;">喜び / 幸福</div>
+                <div class="bg-emotion" style="left: 440px; top: 210px;">興奮</div>
+                <div class="bg-emotion" style="left: 190px; top: 150px;">満足 / 安心</div>
+                <div class="bg-emotion" style="left: 140px; top: 230px;">平穏 / くつろぎ</div>
+                <div class="bg-emotion" style="left: 140px; top: 400px;">倦怠 / 無気力</div>
+                <div class="bg-emotion" style="left: 430px; top: 400px;">怒り / 苛立ち</div>
+                <div class="bg-emotion" style="left: 290px; top: 295px;">中立</div>
+                <div class="bg-emotion" style="left: 320px; top: 420px;">不安 / 緊張</div>
+                <div class="bg-emotion" style="left: 220px; top: 420px;">悲しみ / 憂うつ</div>
+            </div>
+
+            <!-- プルチックモデルのガイド -->
+            <div id="plutchik-guides" style="display:none;">
+                <!-- ここでは円の上下左右に主要感情を配置 -->
+                <div class="axis-label label-top">喜び（Joy）</div>
+                <div class="axis-label label-bottom">悲しみ（Sadness）</div>
+                <div class="axis-label label-left">嫌悪（Disgust）</div>
+                <div class="axis-label label-right">怒り（Anger）</div>
+
+                <!-- 斜め方向に残りの基本感情をガイドとして配置 -->
+                <!-- 期待（Anticipation） 左上 -->
+                <div class="bg-emotion" style="left: 160px; top: 150px;">期待（Anticipation）</div>
+                <!-- 信頼（Trust） 右上 -->
+                <div class="bg-emotion" style="left: 400px; top: 150px;">信頼（Trust）</div>
+                <!-- 恐怖（Fear） 右下 -->
+                <div class="bg-emotion" style="left: 420px; top: 380px;">恐怖（Fear）</div>
+                <!-- 驚き（Surprise） 左下 -->
+                <div class="bg-emotion" style="left: 160px; top: 380px;">驚き（Surprise）</div>
+            </div>
         </div>
         
         <div class="control-panel">
@@ -239,6 +314,7 @@
     
     <script>
         let pinCount = 0;
+        let currentModel = 'russell'; // 'russell' または 'plutchik'
         
         function addEmotionPin(name, x, y, color) {
             const map = document.getElementById('emotion-map');
@@ -246,7 +322,7 @@
             const centerY = 300;
             const radius = 250;
             
-            // 座標変換
+            // 座標変換（-100〜100 の座標系を円の半径にマッピング）
             const pixelX = centerX + (x / 100) * radius;
             const pixelY = centerY - (y / 100) * radius;
             
@@ -271,19 +347,47 @@
             pins.forEach(pin => pin.remove());
             pinCount = 0;
         }
+
+        function setModel(model) {
+            currentModel = model;
+
+            const russellGuides = document.getElementById('russell-guides');
+            const plutchikGuides = document.getElementById('plutchik-guides');
+            const title = document.getElementById('model-title');
+
+            if (model === 'russell') {
+                russellGuides.style.display = 'block';
+                plutchikGuides.style.display = 'none';
+                title.textContent = 'モデル：ラッセルの感情円環モデル';
+            } else {
+                russellGuides.style.display = 'none';
+                plutchikGuides.style.display = 'block';
+                title.textContent = 'モデル：プルチックの感情の輪モデル';
+            }
+
+            // ボタンのアクティブ状態を更新
+            document.querySelectorAll('.model-button').forEach(btn => {
+                btn.classList.toggle('active', btn.getAttribute('data-model') === model);
+            });
+
+            // モデル変更時にピンをクリア（必要に応じて外してもよい）
+            clearPins();
+        }
         
-        // 初期表示
-        setTimeout(() => {
-            addEmotionPin('憂うつ', -50, -70, '#6A7F99');
-        }, 500);
-        
-        setTimeout(() => {
-            addEmotionPin('不安', 60, -60, '#9370DB');
-        }, 800);
-        
-        setTimeout(() => {
-            addEmotionPin('疲労', -70, -30, '#A9A9A9');
-        }, 1100);
+        // 初期表示（ラッセルモデル上でテストピンを落とす）
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                addEmotionPin('憂うつ', -50, -70, '#6A7F99');
+            }, 500);
+            
+            setTimeout(() => {
+                addEmotionPin('不安', 60, -60, '#9370DB');
+            }, 800);
+            
+            setTimeout(() => {
+                addEmotionPin('疲労', -70, -30, '#A9A9A9');
+            }, 1100);
+        });
     </script>
 </body>
 </html>
