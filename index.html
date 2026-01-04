@@ -5,8 +5,8 @@
 <title>ラッセル感情円環（VA配置）- 精神疾患症状マッピング</title>
 
 <style>
-    body { font-family: Arial; background:#eef1ff; padding:20px; }
-    .container { max-width:820px; margin:auto; background:#fff; padding:25px; border-radius:16px; }
+    body { font-family: Arial, "Hiragino Sans", "Meiryo", sans-serif; background:#eef1ff; padding:20px; }
+    .container { max-width:820px; margin:auto; background:#fff; padding:25px; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,.15); }
     
     /* 疾患選択ボタン */
     .disease-selector {
@@ -27,6 +27,7 @@
         cursor: pointer;
         font-weight: bold;
         transition: all 0.3s;
+        font-size: 13px;
     }
     
     .disease-btn:hover {
@@ -69,7 +70,7 @@
         opacity: 0.7;
     }
     
-    /* 症状ピン */
+    /* 症状ピン（共通） */
     .symptom-pin {
         position: absolute;
         transform: translate(-50%, -100%);
@@ -119,7 +120,49 @@
         border-radius: 12px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.2);
     }
-    
+
+    /* 種類別スタイル */
+    /* 情動系：丸ピン（デフォルト） */
+
+    /* 認知・行動・生理など：角ピン＋点線ラベル */
+    .symptom-pin.other .pin-head {
+        border-radius: 6px;
+    }
+    .symptom-pin.other .symptom-label {
+        border: 1px dashed rgba(0,0,0,0.2);
+        font-weight: normal;
+        font-size: 11px;
+    }
+
+    /* 高リスク症状：⚠ アイコン、円外に配置 */
+    .highrisk-box {
+        position:absolute;
+        left:50%;
+        top:100%;
+        transform:translate(-50%, 20px);
+        background:#fff5f5;
+        border:2px solid #fa5252;
+        color:#c92a2a;
+        padding:6px 10px;
+        border-radius:8px;
+        font-size:11px;
+        display:flex;
+        align-items:center;
+        gap:6px;
+        box-shadow:0 4px 10px rgba(0,0,0,.25);
+        max-width:260px;
+        text-align:left;
+    }
+    .highrisk-icon{
+        font-size:16px;
+        line-height:1;
+    }
+    .highrisk-text strong{
+        display:block;
+        font-size:12px;
+        margin-bottom:2px;
+    }
+
     @keyframes dropIn {
         from {
             transform: translate(-50%, -150%) scale(0.5);
@@ -136,9 +179,28 @@
         padding: 15px;
         background: #f8f9fa;
         border-radius: 8px;
-        text-align: center;
-        font-size: 14px;
-        color: #666;
+        font-size: 13px;
+        color: #555;
+    }
+    .legend {
+        margin-top:8px;
+        font-size:11px;
+        color:#666;
+        line-height:1.6;
+    }
+    .legend span{
+        padding:2px 5px;
+        border-radius:8px;
+        margin-right:4px;
+    }
+    .legend .leg-emotional{
+        background:#ffe8cc;
+    }
+    .legend .leg-other{
+        background:#e7f5ff;
+    }
+    .legend .leg-high{
+        background:#ffe3e3;
     }
 </style>
 </head>
@@ -148,12 +210,12 @@
 <h2>ラッセル感情円環 − 精神疾患症状マッピング</h2>
 
 <div class="disease-selector">
-    <button class="disease-btn" onclick="showSymptoms('clear')">クリア</button>
-    <button class="disease-btn" onclick="showSymptoms('schizo-positive')">統合失調症（陽性症状）</button>
-    <button class="disease-btn" onclick="showSymptoms('schizo-negative')">統合失調症（陰性症状）</button>
-    <button class="disease-btn" onclick="showSymptoms('depression')">うつ病</button>
-    <button class="disease-btn" onclick="showSymptoms('bipolar-manic')">双極性障害（躁状態）</button>
-    <button class="disease-btn" onclick="showSymptoms('bipolar-depressive')">双極性障害（うつ状態）</button>
+    <button class="disease-btn active" onclick="showSymptoms(event,'clear')">クリア</button>
+    <button class="disease-btn" onclick="showSymptoms(event,'schizo-positive')">統合失調症（陽性症状）</button>
+    <button class="disease-btn" onclick="showSymptoms(event,'schizo-negative')">統合失調症（陰性症状）</button>
+    <button class="disease-btn" onclick="showSymptoms(event,'depression')">うつ病</button>
+    <button class="disease-btn" onclick="showSymptoms(event,'bipolar-manic')">双極性障害（躁状態）</button>
+    <button class="disease-btn" onclick="showSymptoms(event,'bipolar-depressive')">双極性障害（うつ状態）</button>
 </div>
 
 <div id="emotion-map">
@@ -167,7 +229,12 @@
 </div>
 
 <div class="info-box" id="info-box">
-    疾患を選択すると、主要な症状が感情円環上にマッピングされます
+    疾患を選択すると、主要な症状が感情円環上にマッピングされます。<br>
+    <div class="legend">
+        <span class="leg-emotional">● 情動トーンに近い症状（円内ピン）</span><br>
+        <span class="leg-other">■ 認知・行動・生理などの症状（情動トーンの一例として円内に表示）</span><br>
+        <span class="leg-high">⚠ 高リスク症状（Valence×Arousalで単純に表せないため円外に表示）</span>
+    </div>
 </div>
 </div>
 
@@ -214,64 +281,67 @@ const emotionsVA = [
 ];
 
 // ▼ 疾患別症状定義
+// type: "emotional"（情動トーンに近い）
+//       "other"    （認知・行動・生理など）
+//       "highrisk"  （VA外に表示する高リスク症状）
 const diseaseSymptoms = {
     'schizo-positive': {
         name: '統合失調症（陽性症状）',
         color: '#FF6B6B',
         symptoms: [
-            {name: '幻覚', val: -40, aro: 75},
-            {name: '妄想', val: -60, aro: 70},
-            {name: '興奮', val: -30, aro: 85},
-            {name: '思考障害', val: -50, aro: 60},
-            {name: '緊張', val: -45, aro: 65}
+            {name: '幻覚', val: -40, aro: 75, type: 'other'},
+            {name: '妄想', val: -60, aro: 70, type: 'other'},
+            {name: '興奮', val: -30, aro: 80, type: 'emotional'},
+            {name: '思考障害', val: -50, aro: 60, type: 'other'},
+            {name: '緊張', val: -45, aro: 65, type: 'emotional'}
         ]
     },
     'schizo-negative': {
         name: '統合失調症（陰性症状）',
         color: '#868E96',
         symptoms: [
-            {name: '感情鈍麻', val: -10, aro: -60},
-            {name: '意欲低下', val: -30, aro: -70},
-            {name: '無為', val: -20, aro: -75},
-            {name: '社会的引きこもり', val: -40, aro: -50},
-            {name: '思考貧困', val: -25, aro: -65}
+            {name: '感情鈍麻', val: -30, aro: -55, type: 'other'},
+            {name: '意欲低下', val: -40, aro: -65, type: 'other'},
+            {name: '無為', val: -30, aro: -70, type: 'other'},
+            {name: '社会的引きこもり', val: -40, aro: -50, type: 'other'},
+            {name: '思考貧困', val: -25, aro: -60, type: 'other'}
         ]
     },
     'depression': {
         name: 'うつ病',
         color: '#4C6EF5',
         symptoms: [
-            {name: '抑うつ気分', val: -75, aro: -40},
-            {name: '興味喪失', val: -60, aro: -60},
-            {name: '疲労感', val: -30, aro: -70},
-            {name: '無価値感', val: -80, aro: -30},
-            {name: '希死念慮', val: -85, aro: -20},
-            {name: '不安', val: -55, aro: 40},
-            {name: '焦燥感', val: -60, aro: 45}
+            {name: '抑うつ気分', val: -75, aro: -40, type: 'emotional'},
+            {name: '興味喪失', val: -60, aro: -60, type: 'other'},
+            {name: '疲労感', val: -30, aro: -70, type: 'other'},
+            {name: '無価値感', val: -80, aro: -30, type: 'other'},
+            {name: '希死念慮', val: -85, aro: -20, type: 'highrisk'},
+            {name: '不安', val: -55, aro: 40, type: 'emotional'},
+            {name: '焦燥感', val: -60, aro: 55, type: 'emotional'}
         ]
     },
     'bipolar-manic': {
         name: '双極性障害（躁状態）',
         color: '#FFD43B',
         symptoms: [
-            {name: '高揚感', val: 70, aro: 80},
-            {name: '多弁', val: 40, aro: 75},
-            {name: '観念奔逸', val: 30, aro: 85},
-            {name: '誇大性', val: 60, aro: 70},
-            {name: '睡眠欲求減少', val: 20, aro: 90},
-            {name: '注意散漫', val: 10, aro: 80}
+            {name: '高揚感', val: 70, aro: 80, type: 'emotional'},
+            {name: '多弁', val: 40, aro: 75, type: 'other'},
+            {name: '観念奔逸', val: 30, aro: 85, type: 'other'},
+            {name: '誇大性', val: 60, aro: 70, type: 'other'},
+            {name: '睡眠欲求減少', val: 10, aro: 90, type: 'other'},
+            {name: '注意散漫', val: -5, aro: 75, type: 'other'}
         ]
     },
     'bipolar-depressive': {
         name: '双極性障害（うつ状態）',
         color: '#845EC2',
         symptoms: [
-            {name: '抑うつ気分', val: -70, aro: -35},
-            {name: '精神運動制止', val: -50, aro: -65},
-            {name: '罪責感', val: -75, aro: -25},
-            {name: '集中困難', val: -40, aro: -45},
-            {name: '倦怠感', val: -35, aro: -70},
-            {name: '不安', val: -60, aro: 35}
+            {name: '抑うつ気分', val: -70, aro: -35, type: 'emotional'},
+            {name: '精神運動制止', val: -50, aro: -65, type: 'other'},
+            {name: '罪責感', val: -75, aro: -25, type: 'other'},
+            {name: '集中困難', val: -40, aro: -45, type: 'other'},
+            {name: '倦怠感', val: -35, aro: -70, type: 'other'},
+            {name: '不安', val: -60, aro: 35, type: 'emotional'}
         ]
     }
 };
@@ -292,7 +362,7 @@ function renderBackground(){
     });
 }
 
-// ▼ 症状ピンを追加
+// ▼ 症状ピンを追加（円内）
 function addSymptomPin(symptom, color, delay = 0) {
     setTimeout(() => {
         const map = document.getElementById("emotion-map");
@@ -300,7 +370,7 @@ function addSymptomPin(symptom, color, delay = 0) {
         const py = centerY - (symptom.aro/100)*radius;
         
         const pin = document.createElement("div");
-        pin.className = "symptom-pin";
+        pin.className = "symptom-pin " + (symptom.type === 'other' ? 'other' : 'emotional');
         pin.style.left = `${px}px`;
         pin.style.top = `${py}px`;
         
@@ -314,6 +384,27 @@ function addSymptomPin(symptom, color, delay = 0) {
     }, delay);
 }
 
+// ▼ 高リスク症状を円外に表示
+function addHighRiskSymptom(symptom, color, delay = 0) {
+    setTimeout(() => {
+        const map = document.getElementById("emotion-map");
+        // 円の下側中央に表示
+        const box = document.createElement("div");
+        box.className = "highrisk-box symptom-pin"; // 同じクリアロジックで消せるように class に symptom-pin を含める
+        box.style.left = "50%";
+        box.style.top  = "100%";
+
+        box.innerHTML = `
+            <div class="highrisk-icon">⚠</div>
+            <div class="highrisk-text">
+                <strong>${symptom.name}</strong>
+                <span>この症状は Valence×Arousal だけでは表しきれない高リスク症状です。実際の評価・対応は、医療者との相談が必要です。</span>
+            </div>
+        `;
+        map.appendChild(box);
+    }, delay);
+}
+
 // ▼ ピンをクリア
 function clearPins() {
     const pins = document.querySelectorAll('.symptom-pin');
@@ -321,13 +412,15 @@ function clearPins() {
 }
 
 // ▼ 症状を表示
-function showSymptoms(diseaseType) {
+function showSymptoms(evt, diseaseType) {
     // ボタンのアクティブ状態を更新
     document.querySelectorAll('.disease-btn').forEach(btn => {
         btn.classList.remove('active');
     });
-    event.target.classList.add('active');
-    
+    if (evt && evt.target) {
+        evt.target.classList.add('active');
+    }
+
     // ピンをクリア
     clearPins();
     
@@ -335,16 +428,34 @@ function showSymptoms(diseaseType) {
     const infoBox = document.getElementById('info-box');
     
     if (diseaseType === 'clear') {
-        infoBox.textContent = '疾患を選択すると、主要な症状が感情円環上にマッピングされます';
+        infoBox.innerHTML = `
+            疾患を選択すると、主要な症状が感情円環上にマッピングされます。<br>
+            <div class="legend">
+                <span class="leg-emotional">● 情動トーンに近い症状（円内ピン）</span><br>
+                <span class="leg-other">■ 認知・行動・生理などの症状（情動トーンの一例として円内に表示）</span><br>
+                <span class="leg-high">⚠ 高リスク症状（Valence×Arousalで単純に表せないため円外に表示）</span>
+            </div>
+        `;
         return;
     }
     
     // 選択された疾患の症状を表示
     const disease = diseaseSymptoms[diseaseType];
     if (disease) {
-        infoBox.innerHTML = `<strong>${disease.name}</strong> の主要症状を表示中`;
+        infoBox.innerHTML = `
+            <strong>${disease.name}</strong> の主要症状を表示中<br>
+            <div class="legend">
+                <span class="leg-emotional">● 情動トーンに近い症状（円内ピン）</span><br>
+                <span class="leg-other">■ 認知・行動・生理などの症状（情動トーンの一例として円内に表示）</span><br>
+                <span class="leg-high">⚠ 高リスク症状（Valence×Arousalで単純に表せないため円外に表示）</span>
+            </div>
+        `;
         disease.symptoms.forEach((symptom, index) => {
-            addSymptomPin(symptom, disease.color, index * 150);
+            if (symptom.type === 'highrisk') {
+                addHighRiskSymptom(symptom, disease.color, index * 150);
+            } else {
+                addSymptomPin(symptom, disease.color, index * 150);
+            }
         });
     }
 }
